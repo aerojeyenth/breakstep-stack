@@ -10,17 +10,11 @@ export function getNote({
 }: Pick<Note, "id"> & {
   userId: User["id"];
 }) {
-  return prisma.note.findFirst({
-    where: { id, userId },
-  });
+  return [{id: 1, title: "Staic Notes Title", body: "This is the body of the note"}];
 }
 
 export function getNoteListItems({ userId }: { userId: User["id"] }) {
-  return prisma.note.findMany({
-    where: { userId },
-    select: { id: true, title: true },
-    orderBy: { updatedAt: "desc" },
-  });
+  return [{id: 1, title: "Staic Notes Title", body: "This is the body of the note"}, {id: 2, title: "To be replaced by dynamic values from FireStore", body: "This is the body of the note"}];
 }
 
 export function createNote({

@@ -13,14 +13,12 @@ type LoaderData = {
 };
 
 export const loader: LoaderFunction = async ({ request, params }) => {
-  const userId = await requireUserId(request);
+  // const userId = await requireUserId(request);
   invariant(params.noteId, "noteId not found");
 
-  const note = await getNote({ userId, id: params.noteId });
-  if (!note) {
-    throw new Response("Not Found", { status: 404 });
-  }
-  return json<LoaderData>({ note });
+  // const note = await getNote({ userId, id: params.noteId });
+
+  return json<LoaderData>({ note: { id: "1", title: "This is sample statis note", body: "This is the body of the note", createdAt: new Date(), updatedAt: new Date(), userId: ""} });
 };
 
 export const action: ActionFunction = async ({ request, params }) => {

@@ -55,7 +55,7 @@ export default function NotesPage() {
                     className={({ isActive }) =>
                       `block border-b p-4 text-xl ${isActive ? "bg-white" : ""}`
                     }
-                    to={note.id}
+                    to={"" + note.id}
                   >
                     📝 {note.title}
                   </NavLink>

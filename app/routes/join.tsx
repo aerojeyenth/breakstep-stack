@@ -9,7 +9,7 @@ import * as React from "react";
 
 import { getUserId, createUserSession } from "~/session.server";
 
-import { createUser, getUserByEmail } from "~/models/user.server";
+import { createUser } from "~/models/user.server";
 import { safeRedirect, validateEmail } from "~/utils";
 
 export const loader: LoaderFunction = async ({ request }) => {
@@ -52,19 +52,20 @@ export const action: ActionFunction = async ({ request }) => {
     );
   }
 
-  const existingUser = await getUserByEmail(email);
-  if (existingUser) {
+  const user = await createUser(email, password);
+
+  if (user.error && user.error.message === 'EMAIL_EXISTS') {
     return json<ActionData>(
       { errors: { email: "A user already exists with this email" } },
       { status: 400 }
     );
   }
 
-  const user = await createUser(email, password);
-
   return createUserSession({
     request,
-    userId: user.id,
+    userId: user.localId,
+    idToken: user.idToken,
+    refreshToken: user.refreshToken,
     remember: false,
     redirectTo,
   });
