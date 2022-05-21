@@ -1,7 +1,4 @@
-import type { User } from "@prisma/client";
 import invariant from "tiny-invariant";
-
-import { prisma } from "~/db.server";
 
 invariant(process.env.FIREBASE_API_KEY, "SESSION_SECRET must be set");
 
@@ -15,16 +12,22 @@ const FIREBASE_SIGNUP_URL = `${FIREBASE_ENDPOINT}${FIREBASE_DOMAIN}:${FIREBASE_S
 const FIREBASE_SIGNIN_URL = `${FIREBASE_ENDPOINT}${FIREBASE_DOMAIN}:${FIREBASE_SIGNIN_ACTION}?key=${process.env.FIREBASE_API_KEY}`;
 const FIREBASE_LOOKUP_URL = `${FIREBASE_ENDPOINT}${FIREBASE_DOMAIN}:${FIREBASE_LOOKUP_USER}?key=${process.env.FIREBASE_API_KEY}`;
 
-export type { User } from "@prisma/client";
+export type User = {
+  kind: string;
+  localId: string;
+  email: string;
+  displayName: string;
+  idToken: string;
+  registered: boolean;
+  refreshToken: string;
+  expiresIn: number;
+  id: string;
+}
 
 export async function getUserByIdToken(idToken: string) {
   const res = await fetch(FIREBASE_LOOKUP_URL, { method: "POST", body: JSON.stringify({idToken: idToken}) });
-  const user = await res.json();
-  return (user && user.users[0]) ? {id: user.users[0].localId, email: user.users[0].email} : null;
-}
-
-export async function getUserByEmail(email: User["email"]) {
-  return prisma.user.findUnique({ where: { email } });
+  const lookup: {users: User[]} = await res.json();
+  return (lookup && lookup?.users?.[0]) ? {id: lookup.users[0].localId, email: lookup.users[0].email, localId: lookup.users[0].localId} : null;
 }
 
 export async function createUser(email: User["email"], password: string) {
@@ -33,13 +36,26 @@ export async function createUser(email: User["email"], password: string) {
 }
 
 export async function deleteUserByEmail(email: User["email"]) {
-  return prisma.user.delete({ where: { email } });
+  //TODO implement delteuser by Id this is only user by cypress tests
+  return [];
 }
 
 export async function verifyLogin(
   email: string,
   password: string
 ) {
+
+  // The post request to Firebase return the following
+  //{
+  //   kind: 'identitytoolkit#VerifyPasswordResponse',
+  //   localId: 'nNi0TYd1hbNYNOgAh80iBXXe2G3',
+  //   email: 'email@example.com',
+  //   displayName: '',
+  //   idToken: <Access Token>',
+  //   registered: true,
+  //   refreshToken: <Refresh Token>,
+  //   expiresIn: '3600'
+  // }
 
   const res = await fetch(FIREBASE_SIGNIN_URL, { method: "POST", body: JSON.stringify({email, password, returnSecureToken:true}) });
   const user = await res.json();

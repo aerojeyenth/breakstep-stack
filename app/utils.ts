@@ -69,3 +69,58 @@ export function useUser(): User {
 export function validateEmail(email: unknown): email is string {
   return typeof email === "string" && email.length > 3 && email.includes("@");
 }
+
+
+export type MapValue = {
+  "fields": {[key: string]: FirestoreObject}
+}
+
+export type LatLng = {
+  "latitude": number;
+  "longitude": number
+}
+
+export type ArrayValue = {
+  "values": FirestoreObject[]
+}
+
+export type FirestoreObject = {
+  [key in "stringValue" | "integerValue" | "booleanValue" | "nullValue" | "doubleValue" | "timestampValue" | "arrayValue" | "bytesValue" | "referenceValue" | "geoPointValue" | "arrayValue" | "mapValue"]: string | number | boolean | null | LatLng | ArrayValue | MapValue;
+};
+
+export type FireStoreResponseDocument = {
+  name: string;
+  fields: {[key: string]: FirestoreObject},
+  createTime: string;
+  updateTime: string;
+  error?: any;
+}
+
+const getFireStoreProp = (value: FireStoreResponseDocument[]) => {
+  const props = { 'arrayValue': 1, 'bytesValue': 1, 'booleanValue': 1, 'doubleValue': 1, 'geoPointValue': 1, 'integerValue': 1, 'mapValue': 1, 'nullValue': 1, 'referenceValue': 1, 'stringValue': 1, 'timestampValue': 1 }
+  return Object.keys(value).find(k => props[k] === 1)
+}
+
+export const FireStoreParser = (value: FireStoreResponseDocument[]) => {
+  if(!value) return [];
+  const prop = getFireStoreProp(value)
+  if (prop === 'doubleValue' || prop === 'integerValue') {
+    value = Number(value[prop])
+  }
+  else if (prop === 'arrayValue') {
+    value = (value[prop] && value[prop].values || []).map(v => FireStoreParser(v))
+  }
+  else if (prop === 'mapValue') {
+    value = FireStoreParser(value[prop] && value[prop].fields || {})
+  }
+  else if (prop === 'geoPointValue') {
+    value = { latitude: 0, longitude: 0, ...value[prop] }
+  }
+  else if (prop) {
+    value = value[prop]
+  }
+  else if (typeof value === 'object') {
+    Object.keys(value).forEach(k => value[k] = FireStoreParser(value[k]))
+  }
+  return value;
+}

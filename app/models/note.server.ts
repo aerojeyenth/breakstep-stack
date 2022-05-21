@@ -1,47 +1,84 @@
-import type { User, Note } from "@prisma/client";
+import { nanoid } from 'nanoid'
+import {FireStoreParser} from '../utils';
 
-import { prisma } from "~/db.server";
+import type {FireStoreResponseDocument} from '../utils';
 
-export type { Note } from "@prisma/client";
+import type { User } from './user.server';
 
-export function getNote({
+const FIREBASE_PROJECT_ID = "fir-eats-7b463";
+const FIREBASE_NOTES_COLLECTION = "user-notes";
+const FIREBASE_FIRESTORE_DATABASES_ENDPOINT = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/${FIREBASE_NOTES_COLLECTION}`;
+const key = `?key=${process.env.FIREBASE_API_KEY}`
+
+// Path in which the notes are stored
+// user-notes/<userId>/notes/<notesId>
+
+export type Note = {
+  id: string;
+  title: string;
+  body: string;
+  createTime: string;
+  updateTime: string;
+}
+
+export async function getNote({
   id,
   userId,
-}: Pick<Note, "id"> & {
+}: {
+  id: string;
   userId: User["id"];
 }) {
-  return [{id: 1, title: "Staic Notes Title", body: "This is the body of the note"}];
+  const res = await fetch(`${FIREBASE_FIRESTORE_DATABASES_ENDPOINT}/${userId}/notes/${id}${key}`);
+  const result = await res.json();
+  const doc = FireStoreParser(result);
+  return doc && doc?.error ? null : { ...doc, ...doc['fields']}
 }
 
-export function getNoteListItems({ userId }: { userId: User["id"] }) {
-  return [{id: 1, title: "Staic Notes Title", body: "This is the body of the note"}, {id: 2, title: "To be replaced by dynamic values from FireStore", body: "This is the body of the note"}];
+export async function getNoteListItems({ userId }: { userId: User["id"] }) {
+  const res = await fetch(`${FIREBASE_FIRESTORE_DATABASES_ENDPOINT}/${userId}/notes${key}`);
+  const result: {documents: FireStoreResponseDocument[]} = await res.json();
+
+  const parsedValues = FireStoreParser(result.documents);
+  
+  const notes: Note[] = parsedValues.map((doc: FireStoreResponseDocument) => ({ ...doc, ...doc['fields']}));
+  return notes;
 }
 
-export function createNote({
+export async function createNote({
   body,
   title,
   userId,
 }: Pick<Note, "body" | "title"> & {
   userId: User["id"];
 }) {
-  return prisma.note.create({
-    data: {
-      title,
-      body,
-      user: {
-        connect: {
-          id: userId,
+  const uuid = nanoid();
+  const res = await fetch(`${FIREBASE_FIRESTORE_DATABASES_ENDPOINT}/${userId}/notes/${key}&documentId=${uuid}`, {
+    method: "POST",
+    body: JSON.stringify({
+      "fields": {
+        "id": {
+          "stringValue": uuid
         },
-      },
-    },
+        "title": {
+          "stringValue": title
+        },
+        "body": {
+          "stringValue": body
+        }
+      }
+    })
   });
+
+  const result = await res.json();
+  const doc = FireStoreParser(result);
+  return { ...doc, ...doc['fields']};
 }
 
 export function deleteNote({
   id,
   userId,
 }: Pick<Note, "id"> & { userId: User["id"] }) {
-  return prisma.note.deleteMany({
-    where: { id, userId },
+  return fetch(`${FIREBASE_FIRESTORE_DATABASES_ENDPOINT}/${userId}/notes/${id}${key}`, {
+    method: 'DELETE'
   });
 }
